@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=vim-sudoku
+Comment=Sudoku with vim navigation (normal/insert) in the Omarchy theme
+Exec=/home/brspike/Projects/vim-sudoku/vim-sudoku
+Icon=applications-games
+Terminal=false
+Type=Application
+Categories=Game;LogicGame;
+Keywords=sudoku;vim;game;puzzle;
+StartupWMClass=vim-sudoku

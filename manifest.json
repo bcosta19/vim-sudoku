@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "id": "bcosta19.vim-sudoku",
+  "name": "Vim Sudoku",
+  "version": "1.0.0",
+  "author": "Bruno Costa",
+  "description": "Vim-style Sudoku for the Omarchy shell: hjkl to move, hold Space for momentary INSERT mode, 1-9 for pencil notes, u/r to undo and redo. Follows the live Omarchy theme.",
+  "kinds": [
+    "panel"
+  ],
+  "keepLoaded": true,
+  "entryPoints": {
+    "panel": "SudokuPanel.qml"
+  }
+}

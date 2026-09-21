@@ -1,0 +1,8 @@
+#!/bin/sh
+# vim-sudoku — standalone Quickshell app, same runtime as the Omarchy shell.
+# Theme follows Omarchy live (FileView watchChanges + crossfade), no restart;
+# saves to ~/.local/state/vim-sudoku/slots.json.
+# --no-duplicate: a second launch does not open a second window (avoids two
+# processes writing to the same save file).
+HERE="$(dirname "$(readlink -f "$0")")"
+exec qs -p "$HERE" --no-duplicate "$@"
