@@ -41,8 +41,6 @@ crossfade when you switch themes.
 
 ## Install as an omarchy-shell plugin
 
-Once the repo is pushed to a public git host:
-
 ```bash
 omarchy plugin add https://github.com/bcosta19/vim-sudoku.git --enable
 ```
@@ -68,7 +66,7 @@ shell mounts it once and keeps the board, clock and undo history alive between
 summons. `q` (or <kbd>Esc</kbd> in NORMAL mode) closes the panel without
 touching the rest of the shell.
 
-### Local development (no publishing)
+### Local development
 
 Install the working copy as a symlinked plugin and let the shell hot-reload it:
 
@@ -192,14 +190,6 @@ qml/Game.js            pure game logic (no UI)
 qml/Theme.js           colors.toml parser + fallbacks
 tests/tst_game.qml     game logic tests
 ```
-
-## Before publishing
-
-- `manifest.json` uses the `bcosta19.vim-sudoku` id and `Bruno Costa` as the
-  author — change both if you fork the repo or move it to another account. The
-  id also names the plugin directory and the value passed to
-  `omarchy-shell shell toggle`.
-- `omarchy plugin validate .` must exit 0.
 
 ## License
 
