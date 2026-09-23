@@ -99,9 +99,6 @@ FloatingWindow {
         onTriggered: {
             themeFile.reload();
             themeNameFile.reload();
-            agentsFile.reload();
-            if (finishFlashUntil > 0 && Date.now() > finishFlashUntil)
-                finishFlashUntil = 0;
         }
     }
 
@@ -186,96 +183,40 @@ FloatingWindow {
         }
     }
 
-    // ---- Agents: status pill built into the header ----
-    property string agentsPath: Quickshell.env("VIM_SUDOKU_AGENTS")
-        || (Quickshell.env("HOME") + "/.local/state/vim-sudoku/agents.json")
-    property int agentsWorking: 0
-    property string agentsLabel: ""
-    property bool agentsError: false
-    property string agentsErrorLabel: ""
-    property int agentsUpdatedAt: 0
-    property int finishFlashUntil: 0
-    property bool agentsPillEnabled: true
-
-    function toggleAgentsPill() {
-        agentsPillEnabled = !agentsPillEnabled;
-        game.message = "agents pill " + (agentsPillEnabled ? "ON" : "OFF");
-        persistSlots();
-        refresh();
-    }
-
-    property var agentsFile: FileView {
-        path: root.agentsPath
-        watchChanges: true
-        printErrors: false
-        onLoaded: root.applyAgents(text())
-        onLoadFailed: root.applyAgents("")
-        onFileChanged: reload()
-    }
-
-    function applyAgents(raw) {
-        var working = [];
-        var err = "";
-        var updated = 0;
-        try {
-            var doc = JSON.parse(raw);
-            updated = doc.updated_at || 0;
-            var list = doc.agents || [];
-            for (var i = 0; i < list.length; i++) {
-                if (list[i].state === "working")
-                    working.push(list[i].label || "agent");
-                else if (list[i].state === "error" && !err)
-                    err = list[i].label || "agent";
-            }
-        } catch (e) {}
-        if (!(updated > 0 && (Date.now() - updated) < 120000)) {
-            working = [];
-            err = "";
-        }
-        var was = agentsWorking;
-        agentsWorking = working.length;
-        agentsLabel = working.length > 0
-            ? working[0] + (working.length > 1 ? " +" + (working.length - 1) : "")
-            : "";
-        agentsError = working.length === 0 && err !== "";
-        agentsErrorLabel = err;
-        if (was > 0 && working.length === 0 && !agentsError)
-            finishFlashUntil = Date.now() + 5000;
-    }
-
-    function agentPillVisible() {
-        if (!agentsPillEnabled)
-            return false;
-        return agentsWorking > 0 || agentsError || finishFlashUntil > 0;
-    }
-
-    function agentPillColor() {
-        if (agentsWorking > 0)
-            return tGreen;
-        if (agentsError)
-            return tRed;
-        return tBlue;
-    }
-
-    function agentPillText() {
-        if (agentsWorking > 0)
-            return "󱚣 " + agentsLabel;
-        if (agentsError)
-            return "✕ " + agentsErrorLabel;
-        if (finishFlashUntil > 0)
-            return "✓ done";
-        return "";
-    }
-
     // ---- Save: JSON at ~/.local/state/vim-sudoku/slots.json ----
     property string savePath: Quickshell.env("HOME") + "/.local/state/vim-sudoku/slots.json"
+    property FileView corruptSaveFile: FileView {
+        watchChanges: false
+        printErrors: false
+        atomicWrites: true
+        onSaved: root.bootFresh()
+        onSaveFailed: {
+            root.game.message = "save damaged; could not create backup";
+            root.rev++;
+        }
+    }
     property var saveFile: FileView {
         path: root.savePath
         watchChanges: false
         printErrors: false
         atomicWrites: true
-        onLoaded: root.bootFromLibrary(JSON.parse(text()))
+        onLoaded: root.loadLibrary(text())
         onLoadFailed: root.bootFresh()
+    }
+
+    function loadLibrary(raw) {
+        try {
+            bootFromLibrary(JSON.parse(raw));
+        } catch (e) {
+            // Keep the damaged save before starting a new library.
+            try {
+                corruptSaveFile.path = savePath + ".corrupt-" + Date.now();
+                corruptSaveFile.setText(raw);
+            } catch (backupError) {
+                game.message = "save damaged; could not create backup";
+                rev++;
+            }
+        }
     }
 
     property var game: Game.newState()
@@ -283,6 +224,7 @@ FloatingWindow {
     property int hoverCell: -1
     property string monoFont: "JetBrainsMono Nerd Font"
     property var library: ({active: null, order: [], games: ({})})
+    property bool libraryReady: false
     property bool gamesOpen: false
     property int panelIndex: 0
     property bool spaceHeld: false // Space held = momentary INSERT
@@ -304,13 +246,14 @@ FloatingWindow {
     }
 
     function persistSlots() {
+        if (!libraryReady)
+            return;
         try {
             var dump = {
                 active: library.active,
                 order: library.order,
                 games: library.games,
                 lastTheme: lastTheme,
-                agentsPill: agentsPillEnabled,
                 lastDifficulty: library.lastDifficulty || "medium"
             };
             saveFile.setText(JSON.stringify(dump));
@@ -328,7 +271,6 @@ FloatingWindow {
                 }
                 library = {active: lib.active, order: order, games: lib.games};
                 lastTheme = lib.lastTheme || "";
-                agentsPillEnabled = lib.agentsPill !== false;
                 library.lastDifficulty = validDiff(lib.lastDifficulty);
                 if (library.active && library.games[library.active]) {
                     var st = Game.deserialize(library.games[library.active]);
@@ -336,6 +278,7 @@ FloatingWindow {
                         game = st;
                         game.message = "welcome back! (g = switch game)";
                         themeFile.reload();
+                        libraryReady = true;
                         refresh();
                         return;
                     }
@@ -348,6 +291,7 @@ FloatingWindow {
 
     function bootFresh() {
         library = {active: null, order: [], games: ({})};
+        libraryReady = true;
         newGameSlot();
     }
 
@@ -865,39 +809,6 @@ FloatingWindow {
                         hoverEnabled: true
                         onClicked: root.openGames()
                     }
-                }
-            }
-        }
-
-        // 1b. AGENT PILL — own collapsible line so the header never shifts
-        Item {
-            width: parent.width
-            height: pillBadge.visible ? 30 : 0
-
-            Rectangle {
-                id: pillBadge
-                anchors.horizontalCenter: parent.horizontalCenter
-                height: 26
-                width: Math.min(240, pillText.implicitWidth + 26)
-                radius: 13
-                visible: root.agentPillVisible()
-                color: root.agentPillColor()
-                Text {
-                    id: pillText
-                    anchors.centerIn: parent
-                    width: parent.width - 20
-                    horizontalAlignment: Text.AlignHCenter
-                    elide: Text.ElideRight
-                    text: root.agentPillText()
-                    font.family: root.monoFont
-                    font.bold: true
-                    font.pixelSize: 11
-                    color: onAccent()
-                }
-                MouseArea {
-                    anchors.fill: parent
-                    hoverEnabled: true
-                    onClicked: root.toggleAgentsPill()
                 }
             }
         }
@@ -2094,7 +2005,6 @@ FloatingWindow {
                 case Qt.Key_X: case Qt.Key_D: Game.clearCell(g); break;
                 case Qt.Key_U: Game.doUndo(g); break;
                 case Qt.Key_R: Game.doRedo(g); break;
-                case Qt.Key_O: toggleAgentsPill(); break;
                 case Qt.Key_G: openGames(); break;
                 case Qt.Key_1: case Qt.Key_2: case Qt.Key_3:
                 case Qt.Key_4: case Qt.Key_5: case Qt.Key_6:

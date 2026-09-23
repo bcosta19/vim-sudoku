@@ -9,8 +9,7 @@ standalone [Quickshell](https://quickshell.org/) app.
 `u`/`r` undo and redo. The colors follow the live Omarchy theme, including the
 crossfade when you switch themes.
 
-> **Preview:** drop a `preview.png` at the repo root (a screenshot of the
-> board) before listing the plugin in a marketplace.
+![Vim Sudoku game preview](preview.png)
 
 ## Features
 
@@ -61,6 +60,8 @@ the panel if it is already open:
 omarchy-shell shell toggle bcosta19.vim-sudoku
 omarchy-shell shell hide   bcosta19.vim-sudoku
 ```
+
+Remove the installed plugin with `omarchy plugin remove bcosta19.vim-sudoku`.
 
 The plugin registers as `kinds: ["panel"]` with `keepLoaded: true`, so the
 shell mounts it once and keeps the board, clock and undo history alive between
@@ -125,7 +126,6 @@ already re-reads the theme.
 | `r` | redo | — |
 | `Ctrl+r` | redo | redo |
 | `g` | open the game library | open the game library |
-| `o` | toggle the agents pill | — |
 | `q` / `Ctrl+q` / `Ctrl+c` | quit (closes the panel) | quit |
 | <kbd>Esc</kbd> | quit | back to NORMAL |
 
@@ -153,34 +153,13 @@ INSERT mode.
   "order": ["g1726000000000"],
   "games": { "g1726000000000": { "v": 2, "name": "Game 1", "...": "..." } },
   "lastTheme": "tokyo-night",
-  "agentsPill": true,
   "lastDifficulty": "medium"
 }
 ```
 
 Finished games are not restored (they are dropped when you win). Deleting the
-file simply starts a fresh library.
-
-## Agents pill (optional)
-
-The header can show a pill with the state of background coding agents, read
-from `~/.local/state/vim-sudoku/agents.json`:
-
-```json
-{
-  "updated_at": 1726000000000,
-  "agents": [
-    { "label": "pi", "state": "working" },
-    { "label": "reviewer", "state": "error" }
-  ]
-}
-```
-
-It only appears when the file is fresh (less than 2 minutes old) and something
-is working or has failed; `state: "error"` wins only when nothing is working.
-Press `o` to turn the pill off entirely — the choice is persisted. Point the app
-at a different file with the `VIM_SUDOKU_AGENTS` environment variable. This is a
-personal integration and is entirely optional.
+file simply starts a fresh library. If the file contains invalid JSON, the app
+preserves it as `slots.json.corrupt-<timestamp>` before starting a fresh game.
 
 ## Development
 
@@ -220,7 +199,6 @@ tests/tst_game.qml     game logic tests
   author — change both if you fork the repo or move it to another account. The
   id also names the plugin directory and the value passed to
   `omarchy-shell shell toggle`.
-- Add a `preview.png` and pick a license you are happy with.
 - `omarchy plugin validate .` must exit 0.
 
 ## License
